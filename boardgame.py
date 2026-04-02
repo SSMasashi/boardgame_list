@@ -4,6 +4,9 @@ from google.oauth2.service_account import Credentials
 import gspread
 import ssl
 import certifi
+import requests
+import io
+
 
 
 CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE/export?format=csv"
@@ -13,67 +16,74 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX
 # =====================
 @st.cache_data
 def load_data():
-    import ssl
-    import certifi
+    import requests
+    import io
 
-    # 👇 これを「read_csvより前」に置く（超重要）
-    ssl._create_default_https_context = lambda: ssl.create_default_context(
-        cafile=certifi.where()
-    )
+    response = requests.get(CSV_URL, timeout=10)
 
-    df = pd.read_csv(CSV_URL)
+    if response.status_code != 200:
+        st.error(f"CSV取得失敗: {response.status_code}")
+        return pd.DataFrame()
 
+    content = response.content  # ←これが重要
 
-    # 型の安全対策
+    try:
+        df = pd.read_csv(io.StringIO(content.decode("utf-8-sig")))
+    except:
+        df = pd.read_csv(io.StringIO(content.decode("cp932")))
+
+    # 型処理
     bool_cols = ["known", "played", "owned"]
     for c in bool_cols:
         df[c] = df[c].astype(bool)
 
     int_cols = [
-        "rating",
-        "win_count",
-        "lose_count",
-        "min_p",
-        "max_p",
-        "min_t",
-        "max_t",
+        "rating", "win_count", "lose_count",
+        "min_p", "max_p", "min_t", "max_t"
     ]
     for c in int_cols:
         df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
-    
+
     if "comment" not in df.columns:
         df["comment"] = ""
     df["comment"] = df["comment"].fillna("").astype(str)
 
-
     return df
 
 def save_data(df):
-    scope = [
-        "https://www.googleapis.com/auth/spreadsheets",
-        "https://www.googleapis.com/auth/drive"
-    ]
+    try:
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
 
-    creds = Credentials.from_service_account_file(
-        "credentials.json",
-        scopes=scope
-    )
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=[
+                "https://www.googleapis.com/auth/spreadsheets",
+                "https://www.googleapis.com/auth/drive",
+            ],
+        )
 
-    client = gspread.authorize(creds)
+        client = gspread.authorize(creds)
 
-    sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
-    worksheet = sheet.sheet1
+        sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
+        worksheet = sheet.sheet1
 
-    worksheet.clear()
-    worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+        worksheet.clear()
+        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
 
-    st.cache_data.clear()
+        st.success("保存成功🔥")
+
+    except Exception as e:
+        st.error(f"保存失敗: {e}")
 
 # =====================
 # App
 # =====================
 st.set_page_config(page_title="ボードゲームDB", layout="wide")
 st.title("🎲 ボードゲームDB")
+
 
 st.markdown("""
 <style>
@@ -90,7 +100,6 @@ html, body {
 </style>
 """, unsafe_allow_html=True)
 
-st.cache_data.clear()
 df = load_data()
 
 
