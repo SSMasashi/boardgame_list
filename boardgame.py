@@ -14,7 +14,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX
 # =====================
 # Utils
 # =====================
-@st.cache_data(ttl=5)
+@st.cache_data()
 def load_data():
     import requests
     import io
