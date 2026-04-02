@@ -408,17 +408,19 @@ if "saving" not in st.session_state:
     st.session_state.saving = False
 
 if not after.equals(before) and not st.session_state.saving:
+
     st.session_state.saving = True
 
-    latest_df = load_data()
-
-    base = latest_df.set_index("name")
+    # 🔥 ここが超重要：load_data()を使わない
+    base = df.set_index("name")
     upd = after.set_index("name")
-    base.update(upd)
+
+    cols = ["known", "played", "owned", "rating", "win_count", "lose_count", "comment"]
+    base.update(upd[cols])
+
     new_df = base.reset_index()
 
     save_data(new_df)
-    st.cache_data.clear()
 
     st.session_state.saving = False
-    st.toast("✅ 保存しました", icon="💾")
+    st.toast("💾 自動保存", icon="✅")
