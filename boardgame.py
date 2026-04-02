@@ -420,7 +420,13 @@ if not after.equals(before) and not st.session_state.saving:
 
     new_df = base.reset_index()
 
-    save_data(new_df)
+    save_data(df)
 
-    st.session_state.saving = False
-    st.toast("💾 自動保存", icon="✅")
+    # 🔥 これが超重要
+    st.cache_data.clear()
+
+    # 🔥 再取得して画面にも反映
+    df = load_data()
+
+    st.toast("✅ 保存しました", icon="💾")
+    st.rerun()
