@@ -339,16 +339,27 @@ column_order = [
 
 
 def _players_disp(row):
-    a, b = int(row["min_p"]), int(row["max_p"])
-    return f"{a}人" if a == b else f"{a}〜{b}人"
+    try:
+        a, b = int(row["min_p"]), int(row["max_p"])
+        return f"{a}人" if a == b else f"{a}〜{b}人"
+    except:
+        return ""
 
 def _time_disp(row):
-    a, b = int(row["min_t"]), int(row["max_t"])
-    return f"{a}分" if a == b else f"{a}〜{b}分"
+    try:
+        a, b = int(row["min_t"]), int(row["max_t"])
+        return f"{a}分" if a == b else f"{a}〜{b}分"
+    except:
+        return ""
 
 view = view.copy()
-view["players"] = view.apply(_players_disp, axis=1)
-view["playtime"] = view.apply(_time_disp, axis=1)
+
+if not view.empty:
+    view["players"] = view.apply(_players_disp, axis=1)
+    view["playtime"] = view.apply(_time_disp, axis=1)
+else:
+    view["players"] = []
+    view["playtime"] = []
 
 
 edited = st.data_editor(
