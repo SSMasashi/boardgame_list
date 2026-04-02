@@ -1,0 +1,7 @@
+streamlit
+pandas
+streamlit-aggrid
+streamlit-browser-storage
+gspread
+google-auth
+pandas
