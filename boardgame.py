@@ -14,7 +14,7 @@ CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX
 # =====================
 # Utils
 # =====================
-@st.cache_data
+@st.cache_data(ttl=5)
 def load_data():
     import requests
     import io
@@ -404,15 +404,21 @@ after["comment"]  = after["comment"].fillna("").astype(str)
 before = before.reset_index(drop=True)
 after  = after.reset_index(drop=True)
 
-if not after.equals(before):
-    # played=True ⇒ known=True
-    after.loc[after["played"], "known"] = True
+if "saving" not in st.session_state:
+    st.session_state.saving = False
 
-    # nameをキーに安全に更新
-    base = df.set_index("name")
+if not after.equals(before) and not st.session_state.saving:
+    st.session_state.saving = True
+
+    latest_df = load_data()
+
+    base = latest_df.set_index("name")
     upd = after.set_index("name")
     base.update(upd)
-    df = base.reset_index()
+    new_df = base.reset_index()
 
-    save_data(df)
+    save_data(new_df)
+    st.cache_data.clear()
+
+    st.session_state.saving = False
     st.toast("✅ 保存しました", icon="💾")
