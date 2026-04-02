@@ -1,14 +1,28 @@
 import streamlit as st
 import pandas as pd
+from google.oauth2.service_account import Credentials
+import gspread
+import ssl
+import certifi
 
-CSV_PATH = "boardgames_app.csv"
+
+CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE/export?format=csv"
 
 # =====================
 # Utils
 # =====================
 @st.cache_data
 def load_data():
-    df = pd.read_csv(CSV_PATH)
+    import ssl
+    import certifi
+
+    # 👇 これを「read_csvより前」に置く（超重要）
+    ssl._create_default_https_context = lambda: ssl.create_default_context(
+        cafile=certifi.where()
+    )
+
+    df = pd.read_csv(CSV_URL)
+
 
     # 型の安全対策
     bool_cols = ["known", "played", "owned"]
@@ -35,7 +49,24 @@ def load_data():
     return df
 
 def save_data(df):
-    df.to_csv(CSV_PATH, index=False)
+    scope = [
+        "https://www.googleapis.com/auth/spreadsheets",
+        "https://www.googleapis.com/auth/drive"
+    ]
+
+    creds = Credentials.from_service_account_file(
+        "credentials.json",
+        scopes=scope
+    )
+
+    client = gspread.authorize(creds)
+
+    sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
+    worksheet = sheet.sheet1
+
+    worksheet.clear()
+    worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+
     st.cache_data.clear()
 
 # =====================
@@ -59,6 +90,7 @@ html, body {
 </style>
 """, unsafe_allow_html=True)
 
+st.cache_data.clear()
 df = load_data()
 
 

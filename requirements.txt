@@ -5,3 +5,5 @@ streamlit-browser-storage
 gspread
 google-auth
 pandas
+requests
+certifi
