@@ -86,34 +86,14 @@ col1, col2 = st.columns([8, 1])
 with col1:
     st.title("🎲 ボードゲームDB")
 
+col1, col2 = st.columns([8,1])
+
+with col1:
+    st.title("🎲 ボードゲームDB")
+
 with col2:
-    if st.button("💾 保存", use_container_width=True):
-
-        edited_df = st.session_state.get("edited_df", view).copy()
-
-        # 型補正
-        for c in ["known", "played", "owned"]:
-            edited_df[c] = edited_df[c].astype(bool)
-
-        for c in ["rating", "win_count", "lose_count"]:
-            edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce").fillna(0).astype(int)
-
-        edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
-
-        latest_df = load_data()
-
-        base = latest_df.set_index("name")
-        upd = edited_df.set_index("name")
-
-        base.update(upd)
-        new_df = base.reset_index()
-
-        save_data(new_df)
-
-        st.cache_data.clear()
-
-        st.success("保存しました🔥")
-
+    if st.button("💾 保存", type="primary"):
+        st.session_state.save_clicked = True
 
 st.markdown("""
 <style>
@@ -479,3 +459,30 @@ def save_data(df):
         st.session_state.saving = False
 
 st.divider()
+
+if st.session_state.get("save_clicked"):
+
+    edited_df = st.session_state.get("edited_df", view).copy()
+
+    # 型補正
+    for c in ["known", "played", "owned"]:
+        edited_df[c] = edited_df[c].astype(bool)
+
+    for c in ["rating", "win_count", "lose_count"]:
+        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce").fillna(0).astype(int)
+
+    edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
+
+    latest_df = load_data()
+
+    base = latest_df.set_index("name")
+    upd = edited_df.set_index("name")
+
+    base.update(upd)
+    new_df = base.reset_index()
+
+    save_data(new_df)
+
+    st.cache_data.clear()
+
+    st.success("保存しました🔥")
