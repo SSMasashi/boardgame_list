@@ -167,7 +167,7 @@ with st.sidebar:
     # ジャンルボタン（縦1列で常に表示）
     for g in genres:
         selected = st.session_state.genre_selected.get(g, True)
-        label = f"{g}" if selected else f"○ {g}"
+        label = f"{g}" if selected else f"{g}"
         st.button(
             label,
             key=f"genre_btn_{g}",
