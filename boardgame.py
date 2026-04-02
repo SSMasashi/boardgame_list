@@ -70,7 +70,6 @@ def save_data(df):
         sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
         worksheet = sheet.sheet1
 
-        worksheet.clear()
         worksheet.update([df.columns.values.tolist()] + df.values.tolist())
 
         st.success("保存成功🔥")
@@ -418,19 +417,53 @@ after  = after.reset_index(drop=True)
 if "saving" not in st.session_state:
     st.session_state.saving = False
 
+def save_data(df):
+    if st.session_state.saving:
+        return  # 🔥 二重保存防止
+
+    st.session_state.saving = True
+
+    try:
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scope,
+        )
+
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
+        worksheet = sheet.sheet1
+
+        # 🔥 clearしない
+        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+
+    except Exception as e:
+        st.error(f"保存失敗: {e}")
+
+    finally:
+        st.session_state.saving = False
+
+if "last_save_time" not in st.session_state:
+    st.session_state.last_save_time = 0
+
+SAVE_INTERVAL = 0.5  # 秒
+
 if not after.equals(before):
-    after.loc[after["played"], "known"] = True
+    now = time.time()
 
-    latest_df = load_data()
-    base = latest_df.set_index("name")
-    upd = after.set_index("name")
-    base.update(upd)
-    new_df = base.reset_index()
+    if now - st.session_state.last_save_time > SAVE_INTERVAL:
+        latest_df = load_data()
+        base = latest_df.set_index("name")
+        upd = after.set_index("name")
+        base.update(upd)
+        new_df = base.reset_index()
 
-    save_data(new_df)
+        save_data(new_df)
 
-    st.cache_data.clear()
-    df = load_data()
-
-    st.toast("✅ 保存しました", icon="💾")
-    st.rerun()
+        st.session_state.last_save_time = now
+        st.cache_data.clear()
+        st.rerun()
