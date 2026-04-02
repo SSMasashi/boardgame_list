@@ -447,23 +447,30 @@ def save_data(df):
     finally:
         st.session_state.saving = False
 
-if "last_save_time" not in st.session_state:
-    st.session_state.last_save_time = 0
+st.divider()
 
-SAVE_INTERVAL = 0.5  # 秒
+if st.button("💾 保存", type="primary"):
 
-if not after.equals(before):
-    now = time.time()
+    edited_df = st.session_state.edited_df.copy()
 
-    if now - st.session_state.last_save_time > SAVE_INTERVAL:
-        latest_df = load_data()
-        base = latest_df.set_index("name")
-        upd = after.set_index("name")
-        base.update(upd)
-        new_df = base.reset_index()
+    # 型補正
+    for c in ["known", "played", "owned"]:
+        edited_df[c] = edited_df[c].astype(bool)
 
-        save_data(new_df)
+    for c in ["rating", "win_count", "lose_count"]:
+        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce").fillna(0).astype(int)
 
-        st.session_state.last_save_time = now
-        st.cache_data.clear()
-        st.rerun()
+    edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
+
+    # 最新のスプレッドシートを取得（超重要）
+    latest_df = load_data()
+
+    base = latest_df.set_index("name")
+    upd = edited_df.set_index("name")
+
+    base.update(upd)
+    new_df = base.reset_index()
+
+    save_data(new_df)
+
+    st.success("保存しました！🔥")
