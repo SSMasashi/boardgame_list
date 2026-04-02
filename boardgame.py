@@ -407,25 +407,18 @@ after  = after.reset_index(drop=True)
 if "saving" not in st.session_state:
     st.session_state.saving = False
 
-if not after.equals(before) and not st.session_state.saving:
+if not after.equals(before):
+    after.loc[after["played"], "known"] = True
 
-    st.session_state.saving = True
-
-    # 🔥 ここが超重要：load_data()を使わない
-    base = df.set_index("name")
+    latest_df = load_data()
+    base = latest_df.set_index("name")
     upd = after.set_index("name")
-
-    cols = ["known", "played", "owned", "rating", "win_count", "lose_count", "comment"]
-    base.update(upd[cols])
-
+    base.update(upd)
     new_df = base.reset_index()
 
-    save_data(df)
+    save_data(new_df)
 
-    # 🔥 これが超重要
     st.cache_data.clear()
-
-    # 🔥 再取得して画面にも反映
     df = load_data()
 
     st.toast("✅ 保存しました", icon="💾")
