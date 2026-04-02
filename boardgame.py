@@ -86,11 +86,6 @@ col1, col2 = st.columns([8, 1])
 with col1:
     st.title("🎲 ボードゲームDB")
 
-col1, col2 = st.columns([8,1])
-
-with col1:
-    st.title("🎲 ボードゲームDB")
-
 with col2:
     if st.button("💾 保存", type="primary"):
         st.session_state.save_clicked = True
@@ -398,6 +393,7 @@ edited = st.data_editor(
     height=table_height,
     key="editor",
 )
+st.session_state.edited_df = edited.copy()
 
 # =====================
 # Apply changes
@@ -486,3 +482,5 @@ if st.session_state.get("save_clicked"):
     st.cache_data.clear()
 
     st.success("保存しました🔥")
+
+    st.session_state.save_clicked = False
