@@ -494,7 +494,7 @@ if st.session_state.get("save_clicked"):
 
     st.cache_data.clear()
 
-    save_msg_placeholder.success("保存しました🔥")
+    placeholder.success("保存しました🔥")
     st.session_state._clear_msg_at = time.time() + 2
 
     st.session_state.save_clicked = False
