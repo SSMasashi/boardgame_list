@@ -81,17 +81,16 @@ def save_data(df):
 # App
 # =====================
 st.set_page_config(page_title="ボードゲームDB", layout="wide")
-col1, col2 = st.columns([7, 2])
 
-col1, col2 = st.columns([7, 2])
+st.title("🎲 ボードゲームDB")
 
-with col1:
-    st.title("🎲 ボードゲームDB")
-
-with col2:
+# 表示件数と保存ボタンを同じ行に
+left, right = st.columns([8, 1])
+with left:
+    st.caption(f"表示件数: {len(view)}")
+with right:
     if st.button("💾 保存", type="primary"):
         st.session_state.save_clicked = True
-
 
 st.markdown("""
 <style>
@@ -217,7 +216,9 @@ with st.sidebar:
 
     with st.form("add_game_form", clear_on_submit=True):
         new_name = st.text_input("ゲーム名（必須）")
-        new_genre = st.text_input("ジャンル（手入力）")  # 手入力のみ
+        genre_options = sorted(df["genre"].dropna().unique().tolist())
+        new_genre = st.selectbox("ジャンル", genre_options)
+
 
         c1, c2 = st.columns(2)
         with c1:
@@ -379,8 +380,6 @@ edited = st.data_editor(
             options=[0, 1, 2, 3, 4, 5],
             help="0=未評価",
         ),
-        "win_count": st.column_config.NumberColumn("勝ち", min_value=0, step=1),
-        "lose_count": st.column_config.NumberColumn("負け", min_value=0, step=1),
         "known": st.column_config.CheckboxColumn("気になる"),
         "played": st.column_config.CheckboxColumn("遊んだ"),
         "owned": st.column_config.CheckboxColumn("持ってる"),
@@ -402,8 +401,11 @@ st.session_state.edited_df = edited.copy()
 # Apply changes
 # =====================
 # 実際に保存対象（編集対象）とする列だけ比較する
-compare_cols = ["name", "known", "played", "owned", "rating", "win_count", "lose_count", "comment"]
-
+column_order = [
+    "name", "genre", "players", "playtime",
+    "known", "played", "owned",
+    "rating", "comment",
+]
 # data_editorはdtypeがズレやすいので、比較前に型を揃える
 before = view[compare_cols].copy()
 after  = edited[compare_cols].copy()
