@@ -87,10 +87,14 @@ with col1:
     st.title("🎲 ボードゲームDB")
 
 with col2:
-    save_placeholder = st.empty()  # ← ここにメッセージを出す
-    if st.button("💾 保存", type="primary"):
-        st.session_state.save_clicked = True
+    c_save_btn, c_save_msg = st.columns([1, 1])
 
+    with c_save_btn:
+        if st.button("💾 保存", type="primary"):
+            st.session_state.save_clicked = True
+
+    with c_save_msg:
+        save_msg_placeholder = st.empty()
 
 st.markdown("""
 <style>
@@ -484,6 +488,6 @@ if st.session_state.get("save_clicked"):
 
     st.cache_data.clear()
 
-    save_placeholder.success("保存しました🔥")
+    save_msg_placeholder.success("保存しました🔥")
 
     st.session_state.save_clicked = False
