@@ -38,7 +38,7 @@ def load_data():
         df[c] = df[c].astype(bool)
 
     int_cols = [
-        "rating", "win_count", "lose_count",
+        "win_count", "lose_count",
         "min_p", "max_p", "min_t", "max_t"
     ]
     for c in int_cols:
