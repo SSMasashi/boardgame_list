@@ -50,33 +50,6 @@ def load_data():
 
     return df
 
-def save_data(df):
-    try:
-        scope = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-
-        creds = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
-            scopes=[
-                "https://www.googleapis.com/auth/spreadsheets",
-                "https://www.googleapis.com/auth/drive",
-            ],
-        )
-
-        client = gspread.authorize(creds)
-
-        sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
-        worksheet = sheet.sheet1
-
-        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
-
-        st.success("保存成功🔥")
-
-    except Exception as e:
-        st.error(f"保存失敗: {e}")
-
 # =====================
 # App
 # =====================
@@ -271,10 +244,13 @@ with st.sidebar:
     confirm_delete = st.checkbox("本当に削除する（元に戻せません）")
 
     if st.button("削除", type="primary", disabled=not confirm_delete):
-        # dfから削除（nameが主キー前提）
         df2 = df[df["name"].astype(str) != str(delete_target)].copy()
+
         save_data(df2)
-        st.cache_data.clear() 
+
+        st.cache_data.clear()   # ←重要
+        st.session_state.genre_selected = {}  # ←（任意）UI崩れ防止
+
         st.success(f"削除しました: {delete_target}")
         st.rerun()
 
@@ -425,8 +401,8 @@ if "saving" not in st.session_state:
     st.session_state.saving = False
 
 def save_data(df):
-    if st.session_state.saving:
-        return  # 🔥 二重保存防止
+    if st.session_state.get("saving", False):
+        return
 
     st.session_state.saving = True
 
@@ -445,8 +421,9 @@ def save_data(df):
         sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
         worksheet = sheet.sheet1
 
-        # 🔥 clearしない
         worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+
+        st.toast("保存成功🔥")
 
     except Exception as e:
         st.error(f"保存失敗: {e}")
