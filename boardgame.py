@@ -370,9 +370,10 @@ edited = st.data_editor(
     view[column_order],
     column_order=column_order,
     column_config={
-        "rating": st.column_config.TextColumn(
+        "rating": st.column_config.SelectboxColumn(
             "★",
-            help="例: ★★★（0なら空欄）",
+            options=["", "★", "★★", "★★★", "★★★★", "★★★★★"],
+            help="空白 or ★〜★★★★★ を選択",
         ),
         "known": st.column_config.CheckboxColumn("気になる"),
         "played": st.column_config.CheckboxColumn("遊んだ"),
