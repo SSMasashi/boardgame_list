@@ -318,6 +318,7 @@ with right:
 # ボタン状態から genre_filter（選択されているジャンルのリスト）を生成
 genre_filter = [g for g, v in st.session_state.genre_selected.items() if v]
 
+view["rating_stars"] = view["rating"].apply(lambda x: "★" * x if x > 0 else "")
 
 
 # =====================
@@ -339,7 +340,7 @@ column_order = [
     "known",
     "played",
     "owned",
-    "rating",
+    "rating_stars",
     "comment",
 ]
 
@@ -372,10 +373,16 @@ edited = st.data_editor(
     view[column_order],
     column_order=column_order,
     column_config={
+        "rating_stars": st.column_config.TextColumn(
+        "★",
+        disabled=True
+        ),
         "rating": st.column_config.SelectboxColumn(
-            "★",
-            options=[0, 1, 2, 3, 4, 5],
+            "評価（数値）",
+            options=[0,1,2,3,4,5],
             help="0=未評価",
+            disabled=False,
+            visible=False,   # ← 数値列は隠す
         ),
         "known": st.column_config.CheckboxColumn("気になる"),
         "played": st.column_config.CheckboxColumn("遊んだ"),
@@ -400,10 +407,13 @@ compare_cols = ["name","known","played","owned","rating","comment"]
 # =====================
 # 実際に保存対象（編集対象）とする列だけ比較する
 column_order = [
-    "name", "genre", "players", "playtime",
-    "known", "played", "owned",
-    "rating", "comment",
+    "name","genre","players","playtime",
+    "known","played","owned",
+    "rating_stars",   # ← 表示用
+    "rating",         # ← 編集用（非表示にする）
+    "comment",
 ]
+
 # data_editorはdtypeがズレやすいので、比較前に型を揃える
 before = view[compare_cols].copy()
 after  = edited[compare_cols].copy()
@@ -413,10 +423,8 @@ for c in ["known", "played", "owned"]:
     before[c] = before[c].astype(bool)
     after[c]  = after[c].astype(bool)
 
-    before["rating"] = pd.to_numeric(before["rating"], errors="coerce").fillna(0).astype(int)
-    after["rating"]  = pd.to_numeric(after["rating"],  errors="coerce").fillna(0).astype(int)
-
-
+before["rating"] = pd.to_numeric(before["rating"], errors="coerce").fillna(0).astype(int)
+after["rating"]  = pd.to_numeric(after["rating"],  errors="coerce").fillna(0).astype(int)
 before["comment"] = before["comment"].fillna("").astype(str)
 after["comment"]  = after["comment"].fillna("").astype(str)
 
