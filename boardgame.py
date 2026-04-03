@@ -473,6 +473,7 @@ if st.session_state.get("save_clicked"):
 
     base = latest_df.set_index("name")
     upd = edited_df.set_index("name")
+    upd = upd[~upd.index.duplicated(keep="first")]
 
     base.update(upd)
     new_df = base.reset_index()
