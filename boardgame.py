@@ -118,7 +118,7 @@ with st.sidebar:
 
     # 初期状態：全選択
     if "genre_selected" not in st.session_state:
-        st.session_state.genre_selected = {g: True for g in genres}
+        st.session_state.genre_selected = {g: False for g in genres}
 
     # CSV更新でジャンル増減した場合に追従
     for g in genres:
@@ -273,6 +273,7 @@ with st.sidebar:
         # dfから削除（nameが主キー前提）
         df2 = df[df["name"].astype(str) != str(delete_target)].copy()
         save_data(df2)
+        st.cache_data.clear() 
         st.success(f"削除しました: {delete_target}")
         st.rerun()
 
