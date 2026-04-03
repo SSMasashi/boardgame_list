@@ -341,10 +341,8 @@ column_order = [
     "played",
     "owned",
     "rating_stars",
-    "rating",
     "comment",
 ]
-
 
 
 def _players_disp(row):
