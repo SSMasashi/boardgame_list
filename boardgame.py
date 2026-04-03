@@ -341,8 +341,10 @@ column_order = [
     "played",
     "owned",
     "rating_stars",
+    "rating",   # ★ 追加
     "comment",
 ]
+
 
 
 def _players_disp(row):
@@ -399,37 +401,19 @@ edited = st.data_editor(
     key="editor",
 )
 st.session_state.edited_df = edited.copy()
-compare_cols = ["name","known","played","owned","rating","comment"]
 
-# =====================
-# Apply changes
-# =====================
-# 実際に保存対象（編集対象）とする列だけ比較する
-column_order = [
-    "name","genre","players","playtime",
-    "known","played","owned",
-    "rating_stars",   # ← 表示用
-    "rating",         # ← 編集用（非表示にする）
-    "comment",
-]
+st.markdown("""
+<style>
+/* data_editor のテーブルのうち、"評価（数値）" ヘッダーの列を非表示にする */
+[data-testid="stDataFrame"] th:has(> div:contains("評価（数値）")),
+[data-testid="stDataFrame"] td:nth-child( 
+    /* 上の th と同じ列を消すための指定。環境によってずれる場合は調整が必要 */
+) {
+    display: none !important;
+}
+</style>
+""", unsafe_allow_html=True)
 
-# data_editorはdtypeがズレやすいので、比較前に型を揃える
-before = view[compare_cols].copy()
-after  = edited[compare_cols].copy()
-
-# 型合わせ
-for c in ["known", "played", "owned"]:
-    before[c] = before[c].astype(bool)
-    after[c]  = after[c].astype(bool)
-
-before["rating"] = pd.to_numeric(before["rating"], errors="coerce").fillna(0).astype(int)
-after["rating"]  = pd.to_numeric(after["rating"],  errors="coerce").fillna(0).astype(int)
-before["comment"] = before["comment"].fillna("").astype(str)
-after["comment"]  = after["comment"].fillna("").astype(str)
-
-# インデックス差でequalsが落ちないようにする
-before = before.reset_index(drop=True)
-after  = after.reset_index(drop=True)
 
 if "saving" not in st.session_state:
     st.session_state.saving = False
