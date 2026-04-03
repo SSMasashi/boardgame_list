@@ -275,12 +275,13 @@ with st.sidebar:
     confirm_delete = st.checkbox("本当に削除する（元に戻せません）")
 
     if st.button("削除", type="primary", disabled=not confirm_delete):
-        df2 = df[df["name"].astype(str) != str(delete_target)].copy()
+        df2 = df[df["name"].str.strip() != str(delete_target).strip()].copy()
 
         save_data(df2)
 
-        st.cache_data.clear()   # ←重要
-        st.session_state.genre_selected = {}  # ←（任意）UI崩れ防止
+        st.cache_data.clear()
+
+        st.session_state.just_deleted = True  # ←追加！！
 
         st.success(f"削除しました: {delete_target}")
         st.rerun()
@@ -435,6 +436,12 @@ st.divider()
 
 if st.session_state.get("save_clicked"):
 
+    # 🔥 削除直後は保存処理スキップ
+    if st.session_state.get("just_deleted"):
+        st.session_state.just_deleted = False
+        st.session_state.save_clicked = False
+        st.stop()
+
     edited_df = st.session_state.get("edited_df", view).copy()
 
     # 型補正
@@ -444,6 +451,7 @@ if st.session_state.get("save_clicked"):
     edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
 
     latest_df = load_data()
+    latest_df = latest_df[latest_df["name"].isin(edited_df["name"])]
 
     base = latest_df.set_index("name")
     upd = edited_df.set_index("name")
