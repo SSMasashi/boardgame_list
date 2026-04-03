@@ -318,9 +318,6 @@ with right:
 # ボタン状態から genre_filter（選択されているジャンルのリスト）を生成
 genre_filter = [g for g, v in st.session_state.genre_selected.items() if v]
 
-view["rating_stars"] = view["rating"].apply(lambda x: "★" * x if x > 0 else "")
-
-
 # =====================
 # Editable Table
 # =====================
@@ -340,11 +337,9 @@ column_order = [
     "known",
     "played",
     "owned",
-    "rating_stars",
-    "rating",   # ★ 追加
+    "rating",
     "comment",
 ]
-
 
 
 def _players_disp(row):
@@ -375,15 +370,9 @@ edited = st.data_editor(
     view[column_order],
     column_order=column_order,
     column_config={
-        "rating_stars": st.column_config.TextColumn(
-        "★",
-        disabled=True
-        ),
-        "rating": st.column_config.SelectboxColumn(
-            "評価（数値）",
-            options=[0,1,2,3,4,5],
-            help="0=未評価",
-            disabled=False,
+        "rating": st.column_config.TextColumn(
+            "★",
+            help="例: ★★★（0なら空欄）",
         ),
         "known": st.column_config.CheckboxColumn("気になる"),
         "played": st.column_config.CheckboxColumn("遊んだ"),
@@ -401,19 +390,33 @@ edited = st.data_editor(
     key="editor",
 )
 st.session_state.edited_df = edited.copy()
+compare_cols = ["name","known","played","owned","rating","comment"]
 
-st.markdown("""
-<style>
-/* data_editor のテーブルのうち、"評価（数値）" ヘッダーの列を非表示にする */
-[data-testid="stDataFrame"] th:has(> div:contains("評価（数値）")),
-[data-testid="stDataFrame"] td:nth-child( 
-    /* 上の th と同じ列を消すための指定。環境によってずれる場合は調整が必要 */
-) {
-    display: none !important;
-}
-</style>
-""", unsafe_allow_html=True)
+# =====================
+# Apply changes
+# =====================
+# 実際に保存対象（編集対象）とする列だけ比較する
+column_order = [
+    "name","genre","players","playtime",
+    "known","played","owned",
+    "rating","comment",
+]
 
+# data_editorはdtypeがズレやすいので、比較前に型を揃える
+before = view[compare_cols].copy()
+after  = edited[compare_cols].copy()
+
+# 型合わせ
+for c in ["known", "played", "owned"]:
+    before[c] = before[c].astype(bool)
+    after[c]  = after[c].astype(bool)
+
+before["comment"] = before["comment"].fillna("").astype(str)
+after["comment"]  = after["comment"].fillna("").astype(str)
+
+# インデックス差でequalsが落ちないようにする
+before = before.reset_index(drop=True)
+after  = after.reset_index(drop=True)
 
 if "saving" not in st.session_state:
     st.session_state.saving = False
@@ -458,7 +461,6 @@ if st.session_state.get("save_clicked"):
     for c in ["known", "played", "owned"]:
         edited_df[c] = edited_df[c].astype(bool)
 
-    edited_df["rating"] = pd.to_numeric(edited_df["rating"], errors="coerce").fillna(0).astype(int)
     edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
 
     latest_df = load_data()
