@@ -83,23 +83,14 @@ def save_data(df):
 st.set_page_config(page_title="ボードゲームDB", layout="wide")
 col1, col2 = st.columns([7, 2])
 
+col1, col2 = st.columns([7, 2])
+
 with col1:
     st.title("🎲 ボードゲームDB")
 
 with col2:
-    c_save_btn, c_save_msg = st.columns([1, 1])
-
-    with c_save_btn:
-        if st.button("💾 保存", type="primary"):
-            st.session_state.save_clicked = True
-
-    with c_save_msg:
-        save_msg_placeholder = st.empty()
-
-        if "_clear_msg_at" in st.session_state:
-            if time.time() > st.session_state._clear_msg_at:
-                st.session_state.pop("_clear_msg_at")
-                save_msg_placeholder.empty()
+    if st.button("💾 保存", type="primary"):
+        st.session_state.save_clicked = True
 
 
 st.markdown("""
@@ -494,7 +485,6 @@ if st.session_state.get("save_clicked"):
 
     st.cache_data.clear()
 
-    placeholder.success("保存しました🔥")
-    st.session_state._clear_msg_at = time.time() + 2
+    st.toast("保存しました🔥")
 
     st.session_state.save_clicked = False
