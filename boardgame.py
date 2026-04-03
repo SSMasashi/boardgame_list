@@ -96,6 +96,11 @@ with col2:
     with c_save_msg:
         save_msg_placeholder = st.empty()
 
+        if "_clear_msg_at" in st.session_state:
+            if time.time() > st.session_state._clear_msg_at:
+                st.session_state.pop("_clear_msg_at")
+                save_msg_placeholder.empty()
+
 
 st.markdown("""
 <style>
@@ -462,11 +467,6 @@ def save_data(df):
         st.session_state.saving = False
 
 st.divider()
-
-if "_clear_msg_at" in st.session_state:
-    if time.time() > st.session_state._clear_msg_at:
-        st.session_state.pop("_clear_msg_at")
-        save_msg_placeholder.empty()
 
 if st.session_state.get("save_clicked"):
 
