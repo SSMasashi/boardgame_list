@@ -84,14 +84,6 @@ st.set_page_config(page_title="ボードゲームDB", layout="wide")
 
 st.title("🎲 ボードゲームDB")
 
-# 表示件数と保存ボタンを同じ行に
-left, right = st.columns([8, 1])
-with left:
-    st.caption(f"表示件数: {len(view)}")
-with right:
-    if st.button("💾 保存", type="primary"):
-        st.session_state.save_clicked = True
-
 st.markdown("""
 <style>
 /* 変な transform/zoom が当たってる環境でズレるのを軽減する狙い */
@@ -108,11 +100,11 @@ html, body {
 """, unsafe_allow_html=True)
 
 df = load_data()
-
-
 df["name"] = df["name"].fillna("").astype(str)
 df["genre"] = df["genre"].fillna("").astype(str)
 
+
+        
 # =====================
 # Sidebar Filters
 # =====================
@@ -284,10 +276,6 @@ with st.sidebar:
         st.success(f"削除しました: {delete_target}")
         st.rerun()
 
-
-# ボタン状態から genre_filter（選択されているジャンルのリスト）を生成
-genre_filter = [g for g, v in st.session_state.genre_selected.items() if v]
-
 # =====================
 # Filtering
 # =====================
@@ -319,7 +307,18 @@ if only_played:
 if only_owned:
     view = view[view["owned"]]
 
-st.caption(f"表示件数: {len(view)}")
+# 表示件数と保存ボタンを同じ行に
+left, right = st.columns([8, 1])
+with left:
+    st.caption(f"表示件数: {len(view)}")
+with right:
+    if st.button("💾 保存", type="primary"):
+        st.session_state.save_clicked = True
+
+# ボタン状態から genre_filter（選択されているジャンルのリスト）を生成
+genre_filter = [g for g, v in st.session_state.genre_selected.items() if v]
+
+
 
 # =====================
 # Editable Table
@@ -341,8 +340,6 @@ column_order = [
     "played",
     "owned",
     "rating",
-    "win_count",
-    "lose_count",
     "comment",
 ]
 
@@ -396,6 +393,7 @@ edited = st.data_editor(
     key="editor",
 )
 st.session_state.edited_df = edited.copy()
+compare_cols = ["name","known","played","owned","rating","comment"]
 
 # =====================
 # Apply changes
