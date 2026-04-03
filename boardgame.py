@@ -122,7 +122,8 @@ with st.sidebar:
 
     # CSV更新でジャンル増減した場合に追従
     for g in genres:
-        st.session_state.genre_selected.setdefault(g, True)
+        st.session_state.genre_selected.setdefault(g, False)
+
     for g in list(st.session_state.genre_selected.keys()):
         if g not in genres:
             del st.session_state.genre_selected[g]
