@@ -382,7 +382,6 @@ edited = st.data_editor(
             options=[0,1,2,3,4,5],
             help="0=未評価",
             disabled=False,
-            visible=False,   # ← 数値列は隠す
         ),
         "known": st.column_config.CheckboxColumn("気になる"),
         "played": st.column_config.CheckboxColumn("遊んだ"),
