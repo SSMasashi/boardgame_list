@@ -413,9 +413,9 @@ for c in ["known", "played", "owned"]:
     before[c] = before[c].astype(bool)
     after[c]  = after[c].astype(bool)
 
-for c in ["rating", "win_count", "lose_count"]:
-    before[c] = pd.to_numeric(before[c], errors="coerce").fillna(0).astype(int)
-    after[c]  = pd.to_numeric(after[c], errors="coerce").fillna(0).astype(int)
+    before["rating"] = pd.to_numeric(before["rating"], errors="coerce").fillna(0).astype(int)
+    after["rating"]  = pd.to_numeric(after["rating"],  errors="coerce").fillna(0).astype(int)
+
 
 before["comment"] = before["comment"].fillna("").astype(str)
 after["comment"]  = after["comment"].fillna("").astype(str)
@@ -467,9 +467,7 @@ if st.session_state.get("save_clicked"):
     for c in ["known", "played", "owned"]:
         edited_df[c] = edited_df[c].astype(bool)
 
-    for c in ["rating", "win_count", "lose_count"]:
-        edited_df[c] = pd.to_numeric(edited_df[c], errors="coerce").fillna(0).astype(int)
-
+    edited_df["rating"] = pd.to_numeric(edited_df["rating"], errors="coerce").fillna(0).astype(int)
     edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
 
     latest_df = load_data()
