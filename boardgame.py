@@ -50,6 +50,37 @@ def load_data():
 
     return df
 
+def save_data(df):
+    if st.session_state.get("saving", False):
+        return
+
+    st.session_state.saving = True
+
+    try:
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive"
+        ]
+
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"],
+            scopes=scope,
+        )
+
+        client = gspread.authorize(creds)
+        sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
+        worksheet = sheet.sheet1
+
+        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
+
+        st.toast("保存成功🔥")
+
+    except Exception as e:
+        st.error(f"保存失敗: {e}")
+
+    finally:
+        st.session_state.saving = False
+
 # =====================
 # App
 # =====================
@@ -399,37 +430,6 @@ after  = after.reset_index(drop=True)
 
 if "saving" not in st.session_state:
     st.session_state.saving = False
-
-def save_data(df):
-    if st.session_state.get("saving", False):
-        return
-
-    st.session_state.saving = True
-
-    try:
-        scope = [
-            "https://www.googleapis.com/auth/spreadsheets",
-            "https://www.googleapis.com/auth/drive"
-        ]
-
-        creds = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"],
-            scopes=scope,
-        )
-
-        client = gspread.authorize(creds)
-        sheet = client.open_by_key("1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE")
-        worksheet = sheet.sheet1
-
-        worksheet.update([df.columns.values.tolist()] + df.values.tolist())
-
-        st.toast("保存成功🔥")
-
-    except Exception as e:
-        st.error(f"保存失敗: {e}")
-
-    finally:
-        st.session_state.saving = False
 
 st.divider()
 
