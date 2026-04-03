@@ -6,7 +6,7 @@ import ssl
 import certifi
 import requests
 import io
-
+import time
 
 
 CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE/export?format=csv"
@@ -81,7 +81,7 @@ def save_data(df):
 # App
 # =====================
 st.set_page_config(page_title="ボードゲームDB", layout="wide")
-col1, col2 = st.columns([8, 1])
+col1, col2 = st.columns([7, 2])
 
 with col1:
     st.title("🎲 ボードゲームDB")
@@ -95,6 +95,7 @@ with col2:
 
     with c_save_msg:
         save_msg_placeholder = st.empty()
+
 
 st.markdown("""
 <style>
@@ -462,6 +463,11 @@ def save_data(df):
 
 st.divider()
 
+if "_clear_msg_at" in st.session_state:
+    if time.time() > st.session_state._clear_msg_at:
+        st.session_state.pop("_clear_msg_at")
+        save_msg_placeholder.empty()
+
 if st.session_state.get("save_clicked"):
 
     edited_df = st.session_state.get("edited_df", view).copy()
@@ -489,5 +495,6 @@ if st.session_state.get("save_clicked"):
     st.cache_data.clear()
 
     save_msg_placeholder.success("保存しました🔥")
+    st.session_state._clear_msg_at = time.time() + 2
 
     st.session_state.save_clicked = False
