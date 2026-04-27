@@ -1,0 +1,535 @@
+import streamlit as st
+import pandas as pd
+from google.oauth2.service_account import Credentials
+import gspread
+import requests
+import io
+
+# =====================
+# Constants
+# =====================
+CSV_URL = "https://docs.google.com/spreadsheets/d/1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE/export?format=csv"
+SHEET_KEY = "1ueaOfCcMBZ6HqFRDlJc7mIJ9WhhJX09huXnGJj0goeE"
+
+BOOL_COLS = ["known", "played", "owned"]
+INT_COLS  = ["win_count", "lose_count", "min_p", "max_p", "min_t", "max_t"]
+EDITABLE_COLS = ["known", "played", "owned", "rating", "comment"]
+COLUMN_ORDER  = ["name", "genre", "players", "playtime", "known", "played", "owned", "rating", "comment"]
+RATING_OPTIONS = ["", "★", "★★", "★★★", "★★★★", "★★★★★"]
+
+# =====================
+# CSS
+# =====================
+CSS = """
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=DM+Mono:wght@400;500&display=swap');
+
+:root {
+    --bg:        #0f1117;
+    --surface:   #1a1d27;
+    --surface2:  #22263a;
+    --border:    rgba(255,255,255,0.07);
+    --accent:    #e8c547;
+    --accent2:   #4fc3a1;
+    --danger:    #e05c5c;
+    --text:      #e4e6f0;
+    --text-muted:#7a7f9a;
+    --radius:    10px;
+}
+
+html, body {
+    font-family: 'Noto Sans JP', sans-serif !important;
+    background: var(--bg) !important;
+    color: var(--text) !important;
+}
+
+/* ---- App shell ---- */
+[data-testid="stAppViewContainer"] {
+    background: var(--bg) !important;
+}
+[data-testid="stHeader"] { background: transparent !important; }
+section[data-testid="stSidebar"] {
+    background: var(--surface) !important;
+    border-right: 1px solid var(--border) !important;
+}
+section[data-testid="stSidebar"] > div { padding-top: 1.5rem; }
+
+/* ---- Title ---- */
+h1 {
+    font-size: 1.6rem !important;
+    font-weight: 700 !important;
+    letter-spacing: -0.02em !important;
+    color: var(--accent) !important;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem !important;
+}
+h2, h3 { color: var(--text) !important; }
+
+/* ---- Divider ---- */
+hr { border-color: var(--border) !important; margin: 1rem 0 !important; }
+
+/* ---- Labels / captions ---- */
+label, .stTextInput label, .stNumberInput label, .stCheckbox label,
+.stSelectbox label, .stSlider label {
+    color: var(--text-muted) !important;
+    font-size: 0.75rem !important;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+[data-testid="stCaptionContainer"], small {
+    color: var(--text-muted) !important;
+    font-family: 'DM Mono', monospace !important;
+    font-size: 0.75rem !important;
+}
+
+/* ---- Inputs ---- */
+input[type="text"], input[type="number"],
+.stTextInput input, .stNumberInput input {
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    color: var(--text) !important;
+    font-family: 'Noto Sans JP', sans-serif !important;
+}
+input:focus { border-color: var(--accent) !important; box-shadow: 0 0 0 2px rgba(232,197,71,0.15) !important; }
+
+/* ---- Select box ---- */
+[data-baseweb="select"] > div {
+    background: var(--surface2) !important;
+    border-color: var(--border) !important;
+    border-radius: var(--radius) !important;
+}
+[data-baseweb="select"] span { color: var(--text) !important; }
+[data-baseweb="popover"] { background: var(--surface2) !important; }
+
+/* ---- Slider ---- */
+[data-testid="stSlider"] [data-testid="stTickBar"] { color: var(--text-muted) !important; }
+[data-testid="stSlider"] div[role="slider"] {
+    background: var(--accent) !important;
+    border-color: var(--accent) !important;
+}
+
+/* ---- Checkboxes ---- */
+[data-testid="stCheckbox"] span {
+    color: var(--text) !important;
+}
+
+/* ---- Buttons: baseline ---- */
+button {
+    width: 100% !important;
+    white-space: nowrap !important;
+    border-radius: 8px !important;
+    font-family: 'Noto Sans JP', sans-serif !important;
+    font-weight: 500 !important;
+    transition: all 0.15s ease !important;
+}
+
+/* Primary = accent (yellow) */
+button[kind="primary"] {
+    background: var(--accent) !important;
+    color: #0f1117 !important;
+    border: none !important;
+}
+button[kind="primary"]:hover {
+    background: #f0d060 !important;
+    box-shadow: 0 4px 14px rgba(232,197,71,0.35) !important;
+    transform: translateY(-1px);
+}
+
+/* Secondary = ghost */
+button[kind="secondary"] {
+    background: transparent !important;
+    color: var(--text-muted) !important;
+    border: 1px solid var(--border) !important;
+}
+button[kind="secondary"]:hover {
+    border-color: rgba(255,255,255,0.25) !important;
+    color: var(--text) !important;
+    background: var(--surface2) !important;
+}
+
+/* ---- Form submit button ---- */
+[data-testid="baseButton-secondaryFormSubmit"],
+button[data-testid="baseButton-secondary"] {
+    background: var(--surface2) !important;
+    color: var(--text) !important;
+    border: 1px solid var(--border) !important;
+}
+
+/* ---- Data editor ---- */
+[data-testid="stDataFrame"], .stDataEditor {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    overflow: hidden;
+}
+[data-testid="stDataFrameGlideDataEditor"] {
+    background: var(--surface) !important;
+    color: var(--text) !important;
+}
+
+/* ---- Toast / success / error ---- */
+[data-testid="stToast"] {
+    background: var(--surface2) !important;
+    border: 1px solid var(--border) !important;
+    color: var(--text) !important;
+}
+[data-testid="stAlert"] {
+    border-radius: var(--radius) !important;
+}
+
+/* ---- Sidebar section headers ---- */
+.sidebar-section-title {
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+    margin: 0.75rem 0 0.4rem;
+}
+</style>
+"""
+
+# =====================
+# Data Access Layer
+# =====================
+@st.cache_data()
+def load_data() -> pd.DataFrame:
+    """Google SpreadsheetをCSVとして取得し、型処理済みのDataFrameを返す。"""
+    try:
+        response = requests.get(CSV_URL, timeout=10)
+        response.raise_for_status()
+    except requests.RequestException as e:
+        st.error(f"CSV取得失敗: {e}")
+        return pd.DataFrame()
+
+    content = response.content
+    try:
+        df = pd.read_csv(io.StringIO(content.decode("utf-8-sig")))
+    except UnicodeDecodeError:
+        df = pd.read_csv(io.StringIO(content.decode("cp932")))
+
+    if df.empty:
+        return df
+
+    for c in BOOL_COLS:
+        if c in df.columns:
+            df[c] = df[c].astype(bool)
+
+    for c in INT_COLS:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce").fillna(0).astype(int)
+
+    df.setdefault("comment", "")
+    df.setdefault("rating", "")
+    df["comment"] = df["comment"].fillna("").astype(str)
+    df["rating"]  = df["rating"].fillna("").astype(str)
+
+    return df
+
+
+def save_data(df: pd.DataFrame) -> None:
+    """DataFrameをGoogle Spreadsheetへ書き戻す。多重実行を防ぐガード付き。"""
+    if st.session_state.get("saving", False):
+        return
+    st.session_state.saving = True
+    try:
+        scope = [
+            "https://www.googleapis.com/auth/spreadsheets",
+            "https://www.googleapis.com/auth/drive",
+        ]
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"], scopes=scope
+        )
+        client  = gspread.authorize(creds)
+        ws      = client.open_by_key(SHEET_KEY).sheet1
+        ws.clear()
+        ws.resize(len(df) + 1)
+        data = [df.columns.tolist()] + df.values.tolist()
+        try:
+            ws.update(values=data, range_name="A1")
+        except TypeError:
+            ws.update(data)
+        st.toast("保存しました ✓")
+    except Exception as e:
+        st.error(f"保存失敗: {e}")
+    finally:
+        st.session_state.saving = False
+
+
+# =====================
+# Formatters
+# =====================
+def _range_text(a: int, b: int, unit: str) -> str:
+    return f"{a}{unit}" if a == b else f"{a}〜{b}{unit}"
+
+
+def format_players(row: pd.Series) -> str:
+    try:
+        return _range_text(int(row["min_p"]), int(row["max_p"]), "人")
+    except (ValueError, KeyError):
+        return ""
+
+
+def format_time(row: pd.Series) -> str:
+    try:
+        return _range_text(int(row["min_t"]), int(row["max_t"]), "分")
+    except (ValueError, KeyError):
+        return ""
+
+
+# =====================
+# Session-state helpers
+# =====================
+def _init_genre_state(genres: list[str]) -> None:
+    """ジャンル選択セッションステートを初期化・同期する。"""
+    st.session_state.setdefault("genre_selected", {})
+    for g in genres:
+        st.session_state.genre_selected.setdefault(g, False)
+    for g in list(st.session_state.genre_selected):
+        if g not in genres:
+            del st.session_state.genre_selected[g]
+
+
+# =====================
+# UI: Page setup
+# =====================
+def setup_page() -> None:
+    st.set_page_config(page_title="ボードゲームDB", layout="wide")
+    st.markdown(CSS, unsafe_allow_html=True)
+
+
+# =====================
+# UI: Sidebar — filters
+# =====================
+def render_filters(df: pd.DataFrame) -> dict:
+    """フィルタUIを描画し、フィルタ条件辞書を返す。"""
+    st.markdown('<p class="sidebar-section-title">🔍 検索</p>', unsafe_allow_html=True)
+    keyword = st.text_input("ゲーム名", placeholder="名前で絞り込む…", label_visibility="collapsed")
+
+    genres = sorted(df["genre"].dropna().unique().tolist())
+    _init_genre_state(genres)
+
+    st.markdown('<p class="sidebar-section-title">ジャンル</p>', unsafe_allow_html=True)
+
+    def _toggle(g: str) -> None:
+        st.session_state.genre_selected[g] = not st.session_state.genre_selected[g]
+
+    def _toggle_all() -> None:
+        new = not (all(st.session_state.genre_selected.values()) if genres else True)
+        for g in genres:
+            st.session_state.genre_selected[g] = new
+
+    all_on = all(st.session_state.genre_selected.values()) if genres else True
+    st.button("ALL", use_container_width=True,
+              type="primary" if all_on else "secondary",
+              on_click=_toggle_all)
+
+    for g in genres:
+        selected = st.session_state.genre_selected.get(g, False)
+        st.button(g, key=f"genre_{g}", use_container_width=True,
+                  type="primary" if selected else "secondary",
+                  on_click=_toggle, args=(g,))
+
+    genre_filter = [g for g, v in st.session_state.genre_selected.items() if v]
+
+    st.divider()
+    st.markdown('<p class="sidebar-section-title">人数 / 時間</p>', unsafe_allow_html=True)
+
+    p_min = int(df["min_p"].min()) if not df["min_p"].empty else 1
+    p_max = max(14, p_min)
+    t_min = int(df["min_t"].min()) if not df["min_t"].empty else 1
+    t_max = int(df["max_t"].max()) if not df["max_t"].empty else 120
+
+    players_range = st.slider("プレイ人数", p_min, p_max, (p_min, p_max))
+    time_range    = st.slider("プレイ時間（分）", t_min, t_max, (t_min, t_max))
+
+    st.divider()
+    st.markdown('<p class="sidebar-section-title">絞り込み</p>', unsafe_allow_html=True)
+    col1, col2, col3 = st.columns(3)
+    only_known  = col1.checkbox("👀")
+    only_played = col2.checkbox("🎮")
+    only_owned  = col3.checkbox("📦")
+    col1.caption("気になる"); col2.caption("遊んだ"); col3.caption("持ってる")
+
+    return {
+        "keyword":     keyword,
+        "genres":      genre_filter,
+        "players":     players_range,
+        "time":        time_range,
+        "only_known":  only_known,
+        "only_played": only_played,
+        "only_owned":  only_owned,
+    }
+
+
+# =====================
+# UI: Sidebar — actions (add / delete)
+# =====================
+def render_actions(df: pd.DataFrame) -> None:
+    """追加・削除UIを描画し、処理を実行する。"""
+    st.markdown('<p class="sidebar-section-title">➕ 新規追加</p>', unsafe_allow_html=True)
+
+    genre_options = sorted(df["genre"].dropna().unique().tolist())
+
+    with st.form("add_game_form", clear_on_submit=True):
+        new_name  = st.text_input("ゲーム名（必須）")
+        new_genre = (st.selectbox("ジャンル", genre_options)
+                     if genre_options else st.text_input("ジャンル"))
+
+        c1, c2 = st.columns(2)
+        new_min_p = c1.number_input("最小人数", min_value=1, value=2, step=1)
+        new_max_p = c2.number_input("最大人数", min_value=1, value=4, step=1)
+        new_min_t = c1.number_input("最小時間(分)", min_value=1, value=15, step=5)
+        new_max_t = c2.number_input("最大時間(分)", min_value=1, value=30, step=5)
+
+        if st.form_submit_button("追加", use_container_width=True):
+            error = _validate_new_game(df, new_name, new_genre, new_min_p, new_max_p, new_min_t, new_max_t)
+            if error:
+                st.error(error)
+            else:
+                new_row = {
+                    "name": new_name.strip(), "genre": new_genre.strip(),
+                    "min_p": int(new_min_p), "max_p": int(new_max_p),
+                    "min_t": int(new_min_t), "max_t": int(new_max_t),
+                    "known": False, "played": False, "owned": False,
+                    "rating": "", "win_count": 0, "lose_count": 0, "comment": "",
+                }
+                save_data(pd.concat([df, pd.DataFrame([new_row])], ignore_index=True))
+                st.cache_data.clear()
+                st.rerun()
+
+    st.divider()
+    st.markdown('<p class="sidebar-section-title">🗑️ 削除</p>', unsafe_allow_html=True)
+
+    delete_target = st.selectbox(
+        "削除するゲーム", label_visibility="collapsed",
+        options=sorted(df["name"].astype(str).unique().tolist())
+    )
+    confirm = st.checkbox("削除を確認（元に戻せません）")
+    if st.button("削除", type="primary", disabled=not confirm, use_container_width=True):
+        filtered = df[df["name"].str.strip() != str(delete_target).strip()].copy()
+        save_data(filtered)
+        st.cache_data.clear()
+        st.rerun()
+
+
+def _validate_new_game(df, name, genre, min_p, max_p, min_t, max_t) -> str | None:
+    """バリデーション: エラーメッセージを返す。問題なければNone。"""
+    if not name.strip():
+        return "ゲーム名は必須です。"
+    if name.strip() in df["name"].astype(str).values:
+        return "同名のゲームが既に存在します（重複不可）。"
+    if not str(genre).strip():
+        return "ジャンルを入力してください。"
+    if min_p > max_p:
+        return "最小人数が最大人数を超えています。"
+    if min_t > max_t:
+        return "最小時間が最大時間を超えています。"
+    return None
+
+
+# =====================
+# Business Logic: filter / save
+# =====================
+def apply_filters(df: pd.DataFrame, filters: dict) -> pd.DataFrame:
+    """フィルタ条件を適用してDataFrameを返す。"""
+    view = df.copy()
+
+    if filters["keyword"]:
+        view = view[view["name"].str.contains(filters["keyword"], case=False, na=False)]
+    if filters["genres"]:
+        view = view[view["genre"].isin(filters["genres"])]
+
+    lo_p, hi_p = filters["players"]
+    view = view[(view["min_p"] <= hi_p) & (view["max_p"] >= lo_p)]
+
+    lo_t, hi_t = filters["time"]
+    view = view[(view["min_t"] <= hi_t) & (view["max_t"] >= lo_t)]
+
+    if filters["only_known"]:  view = view[view["known"]]
+    if filters["only_played"]: view = view[view["played"]]
+    if filters["only_owned"]:  view = view[view["owned"]]
+
+    return view
+
+
+def merge_and_save(full_df: pd.DataFrame, edited_df: pd.DataFrame) -> None:
+    """エディタの変更を元のDataFrameへマージして保存する。"""
+    for c in BOOL_COLS:
+        edited_df[c] = edited_df[c].astype(bool)
+    edited_df["comment"] = edited_df["comment"].fillna("").astype(str)
+    edited_df["rating"]  = edited_df["rating"].fillna("").astype(str)
+
+    full_df   = full_df.set_index("name")
+    edited_df = edited_df.set_index("name")
+    full_df.update(edited_df[EDITABLE_COLS])
+
+    save_data(full_df.reset_index())
+    st.cache_data.clear()
+
+
+# =====================
+# Main
+# =====================
+def main() -> None:
+    setup_page()
+    st.title("🎲 ボードゲームDB")
+
+    full_df = load_data()
+    if full_df.empty:
+        st.warning("スプレッドシートにデータがありません。")
+        st.stop()
+
+    full_df["name"]  = full_df["name"].fillna("").astype(str)
+    full_df["genre"] = full_df["genre"].fillna("").astype(str)
+
+    with st.sidebar:
+        filters = render_filters(full_df)
+        st.divider()
+        render_actions(full_df)
+
+    view_df = apply_filters(full_df, filters)
+
+    if not view_df.empty:
+        view_df["players"]  = view_df.apply(format_players, axis=1)
+        view_df["playtime"] = view_df.apply(format_time, axis=1)
+    else:
+        view_df["players"] = view_df["playtime"] = []
+
+    # ヘッダー行（件数 + 保存ボタン）
+    left, right = st.columns([8, 1])
+    left.caption(f"{len(view_df)} 件表示")
+    do_save = right.button("💾 保存", type="primary")
+
+    # テーブルエディタ
+    ROW_H, HEADER_H, PAD = 35, 38, 12
+    height = HEADER_H + PAD + ROW_H * (len(view_df) + 1)
+
+    edited_df = st.data_editor(
+        view_df[COLUMN_ORDER],
+        column_order=COLUMN_ORDER,
+        column_config={
+            "name":     st.column_config.TextColumn("ゲーム",  disabled=True),
+            "genre":    st.column_config.TextColumn("ジャンル", disabled=True),
+            "players":  st.column_config.TextColumn("人数",   disabled=True),
+            "playtime": st.column_config.TextColumn("時間",   disabled=True),
+            "known":    st.column_config.CheckboxColumn("👀 気になる"),
+            "played":   st.column_config.CheckboxColumn("🎮 遊んだ"),
+            "owned":    st.column_config.CheckboxColumn("📦 持ってる"),
+            "rating":   st.column_config.SelectboxColumn("★ 評価", options=RATING_OPTIONS),
+            "comment":  st.column_config.TextColumn("📝 メモ"),
+        },
+        num_rows="fixed",
+        use_container_width=True,
+        hide_index=True,
+        height=height,
+        key="editor",
+    )
+
+    if do_save:
+        merge_and_save(full_df, edited_df)
+        st.rerun()
+
+
+if __name__ == "__main__":
+    main()
